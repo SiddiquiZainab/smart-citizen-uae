@@ -1,0 +1,96 @@
+# Abu Dhabi Government — Next.js 14 Engineering Rules
+
+This is a Next.js 14 (App Router) TypeScript project for Abu Dhabi Government digital services. Follow UAE Design System / TDRA digital government practices: bilingual EN+AR, WCAG 2.2 Level AA, secure and accessible public-sector UX.
+
+## Stack (do not deviate)
+
+- Next.js 14 App Router (`app/`). Prefer Server Components. Add `"use client"` only for interactivity.
+- TypeScript: `strict` mode. No `any`. Prefer `unknown` + narrowing. Explicit public API types.
+- Tailwind CSS for all styling. No CSS modules, styled-components, or inline style objects except rare dynamic values.
+- Functional React only. Small, single-purpose components. Colocate UI + types; extract hooks for reusable logic.
+- Dark and light mode via `class` strategy (`dark:`). Persist theme; respect `prefers-color-scheme` on first visit.
+
+## TypeScript
+
+```ts
+// ❌ BAD
+function load(id: any) { return fetch(`/api/${id}`) }
+
+// ✅ GOOD
+async function loadEntity(id: string): Promise<Entity> {
+  const res = await fetch(`/api/entities/${id}`, { cache: "no-store" })
+  if (!res.ok) throw new Error("Unable to load entity")
+  return res.json() as Promise<Entity>
+}
+```
+
+- Named exports for components and utilities. Default export only for Next.js `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`.
+- Props interfaces named `ComponentNameProps`. Discriminated unions for variants.
+- No non-null assertions (`!`) unless a nearby invariant is proven.
+
+## Components & structure
+
+- `app/[locale]/` for routed pages. `components/` for UI. `lib/` for pure helpers. `hooks/` for client hooks.
+- One component per file. Keep files under ~150 lines; split by concern (header, filters, table, chart).
+- Dashboard building blocks: `PageHeader`, `StatCard`, `DataTable`, `FilterBar`, `ChartCard`, `EmptyState`, `ErrorState`.
+- Composition over prop sprawl. Pass children / slots instead of many boolean flags.
+
+## Internationalization (EN + AR / RTL)
+
+- Support `en` and `ar` equally. Never ship untranslated UI copy.
+- Set `<html lang={locale} dir={locale === "ar" ? "rtl" : "ltr"}>` in the locale layout.
+- Use a proper i18n library (e.g. `next-intl`). All user-facing strings live in message catalogs (`messages/en.json`, `messages/ar.json`).
+- Logical CSS only: `ms`/`me`, `ps`/`pe`, `start`/`end`, Tailwind `rtl:` / `ltr:` when needed. Do not hardcode `left`/`right` for layout.
+- Arabic text uses a professional Naskh/Kufi government-suitable font; English uses a clean geometric sans. Line length and weights must remain readable at AA contrast.
+- Full language segmentation: no leftover English in the Arabic UI (and vice versa), except proper nouns and official entity names as required.
+- Dates: display in Gregorian; optionally show Hijri where the product requires it. Format with `Intl` for the active locale.
+- Numbers and currency: `Intl.NumberFormat` with the active locale. AED as the default currency.
+
+## Visual design — sleek government dashboards
+
+- High-end, restrained, institutional: generous whitespace, thin borders, subtle elevation, 8px spacing scale.
+- Palette: deep navy / charcoal surfaces, sand/gold accents used sparingly, never loud gradients or decorative clutter.
+- Light: cool off-white canvas, white cards, muted slate text. Dark: true dark (not pure black) surfaces, muted gold/navy highlights, no neon.
+- Charts (Recharts or similar) must inherit theme tokens, use accessible color sets (not color-only meaning), and remain legible in both modes.
+- Density: comfortable, not cramped. Interactive targets ≥ 44×44 CSS px.
+- Motion: short, purposeful (150–250ms). Honor `prefers-reduced-motion`.
+
+```tsx
+// ❌ BAD — physical properties, mixed copy, no theme tokens
+<div className="ml-4 bg-[#111] text-left">Dashboard</div>
+
+// ✅ GOOD
+<div className="ms-4 bg-surface text-start text-foreground">
+  {t("dashboard.title")}
+</div>
+```
+
+## Accessibility & government compliance
+
+- WCAG 2.2 Level AA: contrast, keyboard access, visible focus, form labels, error text tied to fields.
+- Semantic HTML and correct ARIA. Icon-only controls need accessible names.
+- Images: meaningful `alt` in the active language; decorative images `alt=""`.
+- Do not rely on color alone. Support screen readers in both LTR and RTL.
+- Aim for Lighthouse Accessibility / Performance / SEO ≥ 90 on mobile and desktop.
+
+## Security & data (public sector)
+
+- No secrets in client code. Use server actions or Route Handlers for privileged work.
+- Validate and sanitize all inputs. Never interpolate untrusted data into HTML.
+- Least-privilege data fetching. Do not log PII. Follow UAE PDPL principles for personal data.
+- Prefer official APIs and documented contracts; type responses; handle empty/error states explicitly.
+
+## Next.js 14 conventions
+
+- Metadata API for titles/descriptions in both locales.
+- `next/image` for images. `next/link` for internal navigation.
+- Loading and error UI per route. Preserve locale when redirecting.
+- Server-first data; cache deliberately (`cache`, `revalidate`, or `no-store`).
+
+## Do not
+
+- Mix App Router with Pages Router.
+- Use `any`, `@ts-ignore`, or disabled ESLint to hide type errors.
+- Hardcode English strings in components.
+- Invert layout with negative margins instead of RTL-aware spacing.
+- Introduce new CSS-in-JS or global CSS beyond Tailwind + a thin `globals.css` (fonts, tokens, base).
